@@ -21,21 +21,15 @@ async def start(update, context):
 		await update.message.reply_sticker(sticker)
 	
 	await update.message.chat.send_chat_action('typing')
-	await sleep(4)
+	await sleep(2)
 	await update.message.reply_text(f"Привет, {update.message.chat.first_name}. Можешь звать меня TimeЖаб. "
 	                                f"Если хочешь, буду напоминать о важных делах. Буду рад помочь)")
-
-
-@bot_typing_decorator
-async def register(update, context):
+	
 	db_sess = db_session.create_session()
 	if not db_sess.query(User).filter(User.id == update.message.chat.id).first():
 		user = User(id=update.message.chat.id,
 		            username=update.message.chat.username)
 		db_sess.add(user)
-		await update.message.reply_text("Вы успешно зарегистрированы!")
-	else:
-		await update.message.reply_text("Регистрация была прервана. Может быть Вы уже зарегистрированы?")
 	db_sess.commit()
 
 
@@ -87,7 +81,6 @@ def main():
 	
 	# Create command handlers
 	start_handler = CommandHandler('start', start)
-	register_handler = CommandHandler('register', register)
 	change_name_handler = CommandHandler('change_name', change_name)
 	change_email_handler = CommandHandler('change_email', change_email)
 	change_password_handler = CommandHandler('change_password', change_password)
@@ -97,7 +90,6 @@ def main():
 	
 	# Command handlers
 	application.add_handler(start_handler)
-	application.add_handler(register_handler)
 	application.add_handler(change_name_handler)
 	application.add_handler(change_email_handler)
 	application.add_handler(change_password_handler)
