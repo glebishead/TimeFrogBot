@@ -16,12 +16,12 @@ def bot_typing_decorator(func):
 
 async def start(update, context):
 	await update.message.chat.send_chat_action('choose_sticker')
-	await sleep(2)
+	await sleep(1)
 	with open('static/stickers/sticker.webp', 'rb') as sticker:
 		await update.message.reply_sticker(sticker)
 	
 	await update.message.chat.send_chat_action('typing')
-	await sleep(2)
+	await sleep(1)
 	await update.message.reply_text(f"Привет, {update.message.chat.first_name}. Можешь звать меня TimeЖаб. "
 	                                f"Если хочешь, буду напоминать о важных делах. Буду рад помочь)")
 	
@@ -80,7 +80,7 @@ def main():
 	application = Application.builder().token(os.getenv('TOKEN')).build()
 	
 	# Create command handlers
-	start_handler = CommandHandler('start', start)
+	start_handler = CommandHandler(['start', 'help'], start)
 	change_name_handler = CommandHandler('change_name', change_name)
 	change_email_handler = CommandHandler('change_email', change_email)
 	change_password_handler = CommandHandler('change_password', change_password)
