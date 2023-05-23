@@ -1,9 +1,16 @@
 import os
 from asyncio import sleep
+from json import loads
 from telegram.ext import Application, MessageHandler, CommandHandler, filters
 from werkzeug.security import generate_password_hash
 from data import db_session
 from data.users import User
+from keybuttonclient import kb_client
+
+
+def get_messages_text():
+	with open('messages.json', 'r', encoding='utf-8') as _file:
+		return loads(_file.read())
 
 
 def bot_typing_decorator(func):
@@ -15,6 +22,8 @@ def bot_typing_decorator(func):
 
 
 async def start(update, context):
+	global messages_text
+	
 	await update.message.chat.send_chat_action('choose_sticker')
 	await sleep(1)
 	with open('static/stickers/sticker.webp', 'rb') as sticker:
@@ -22,8 +31,9 @@ async def start(update, context):
 	
 	await update.message.chat.send_chat_action('typing')
 	await sleep(1)
-	await update.message.reply_text(f"Привет, {update.message.chat.first_name}. Можешь звать меня TimeЖаб. "
-	                                f"Если хочешь, буду напоминать о важных делах. Буду рад помочь)")
+	await update.message.reply_text(f"{messages_text['start1']}"
+	                                f"{update.message.chat.first_name}"
+	                                f"{messages_text['start2']}", reply_markup=kb_client)
 	
 	db_sess = db_session.create_session()
 	if not db_sess.query(User).filter(User.id == update.message.chat.id).first():
@@ -35,14 +45,16 @@ async def start(update, context):
 
 @bot_typing_decorator
 async def change_password(update, context):
+	global messages_text
+	
 	db_sess = db_session.create_session()
 	if db_sess.query(User).filter(User.id == update.message.chat.id).first():
 		db_sess.query(User).filter(
 			User.id == update.message.chat.id
 		).first().hashed_password = generate_password_hash(update.message.text.split()[1])
-		await update.message.reply_text("Пароль изменен успешно!")
+		await update.message.reply_text(messages_text['password_change_success'])
 	else:
-		await update.message.reply_text("Смена пароля прервана. Может быть Вы не зарегистрированы?")
+		await update.message.reply_text(messages_text['password_change_fail'])
 	db_sess.commit()
 
 
@@ -53,9 +65,9 @@ async def change_email(update, context):
 		db_sess.query(User).filter(
 			User.id == update.message.chat.id
 		).first().email = update.message.text.split()[1]
-		await update.message.reply_text("Почта изменена успешно")
+		await update.message.reply_text(messages_text['email_change_success'])
 	else:
-		await update.message.reply_text("Смена почты прервана. Может быть Вы не зарегистрированы?")
+		await update.message.reply_text(messages_text['email_change_fail'])
 	db_sess.commit()
 
 
@@ -64,9 +76,9 @@ async def change_name(update, context):
 	db_sess = db_session.create_session()
 	if db_sess.query(User).filter(User.id == update.message.chat.id).first():
 		db_sess.query(User).filter(User.id == update.message.chat.id).first().username = update.message.text.split()[1]
-		await update.message.reply_text("Имя изменено успешно!")
+		await update.message.reply_text(messages_text['name_change_success'])
 	else:
-		await update.message.reply_text("Смена имени прервана. Может быть Вы не зарегистрированы?")
+		await update.message.reply_text(messages_text['name_change_fail'])
 	db_sess.commit()
 
 
@@ -109,5 +121,6 @@ def connect_db():
 
 
 if __name__ == '__main__':
+	messages_text = get_messages_text()
 	connect_db()
 	main()
