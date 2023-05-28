@@ -1,6 +1,7 @@
 import os
 from asyncio import sleep
-from json import loads
+from json import loads, dump
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from telegram.ext import Application, MessageHandler, CommandHandler, filters
 from werkzeug.security import generate_password_hash
 from data import db_session
@@ -11,6 +12,18 @@ from keybuttonclient import kb_client
 def get_messages_text():
 	with open('messages.json', 'r', encoding='utf-8') as _file:
 		return loads(_file.read())
+
+
+def get_timetable():
+	with open('timetable.json', 'r', encoding='utf-8') as _file:
+		return loads(_file.read())
+
+
+def write_timetable():
+	global timetable
+	print(f'from write_timetable {timetable}')
+	with open('timetable.json', 'w', encoding='utf-8') as _file:
+		return dump(timetable, _file)
 
 
 def bot_typing_decorator(func):
@@ -40,6 +53,23 @@ async def start(update, context):
 		user = User(id=update.message.chat.id,
 		            username=update.message.chat.username)
 		db_sess.add(user)
+	db_sess.commit()
+
+
+@bot_typing_decorator
+async def add_note(update, context):
+	global messages_text, timetable
+	
+	await update.message.reply_text("Добавил заметку успешно")
+	
+	db_sess = db_session.create_session()
+	if db_sess.query(User).filter(User.id == update.message.chat.id).first():
+		text_message = update.message.text.split()
+		if str(update.message.chat.id) not in timetable.keys():
+			timetable[str(update.message.chat.id)] = {text_message[1]: [text_message[2]]}
+		else:
+			timetable[str(update.message.chat.id)][text_message[1]] = text_message[2]
+	print(f'from add_note {timetable}')
 	db_sess.commit()
 
 
@@ -96,6 +126,7 @@ def main():
 	change_name_handler = CommandHandler('change_name', change_name)
 	change_email_handler = CommandHandler('change_email', change_email)
 	change_password_handler = CommandHandler('change_password', change_password)
+	add_note_handler = CommandHandler('add_note', add_note)
 	
 	# Create text_handlers
 	text_handler = MessageHandler(filters.TEXT, echo)
@@ -105,6 +136,7 @@ def main():
 	application.add_handler(change_name_handler)
 	application.add_handler(change_email_handler)
 	application.add_handler(change_password_handler)
+	application.add_handler(add_note_handler)
 	
 	# Text handlers
 	application.add_handler(text_handler)
@@ -122,5 +154,12 @@ def connect_db():
 
 if __name__ == '__main__':
 	messages_text = get_messages_text()
+	timetable = get_timetable()
 	connect_db()
+	
+	# Start scheduler
+	scheduler = AsyncIOScheduler()
+	scheduler.add_job(write_timetable, 'interval', seconds=3)
+	scheduler.start()
+	
 	main()
